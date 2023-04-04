@@ -1,6 +1,7 @@
 // Sefl mooving window
 
-use std::io::{self, Write, Read};
+use std::fs::File;
+use std::io::{self, Write, Read, BufReader};
 use std::thread;
 use std::time::Duration;
 
@@ -12,7 +13,7 @@ use winit::{
 };
 
 use winapi;
-use image;
+use image::{self, ImageFormat};
 
 fn main() {
     let event_loop = EventLoop::new();
@@ -48,7 +49,28 @@ fn main() {
        
     
     //set image on background of the window using image library and winapi library (png format)
-    let mut image = image::open("S:\\0\\rust\\tool\\src\\im.png").unwrap();
+    let mut actual_path = std::env::current_dir().unwrap().to_str().unwrap().to_owned() + "\\im";
+    //println!("actual path: {}", actual_path);
+    //correct path write
+    let mut i = 0;
+    while i < actual_path.len() {
+        if actual_path.chars().nth(i).unwrap() == '\\' {
+            actual_path.replace_range(i..i+1, "\\\\");
+            i += 1;
+        }
+        i += 1;
+    }
+    //println!("actual path: {}", actual_path);
+    //pause
+    //let mut input = String::new();
+    //io::stdin().read_line(&mut input).unwrap();
+    //open image as png format even if it is not
+    let mut image = image::load(
+        BufReader::new(File::open(actual_path.to_owned()).unwrap()),
+        ImageFormat::Png
+    ).unwrap();
+    //let mut image = image::open(actual_path.to_owned()).unwrap();
+    //let mut image = image::open("S:\\0\\rust\\tool\\src\\im.png").unwrap();
 
     //get image size
     let mut img_width = image.width() as i32;
