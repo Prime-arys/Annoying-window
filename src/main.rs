@@ -2,9 +2,12 @@
 
 use std::fs::File;
 use std::io::{self, Write, Read, BufReader};
-use std::process::Command;
+use std::path::Path;
+use std::process;
+use std::env;
 use std::{thread, time};
 use std::time::Duration;
+use std::process::Command;
 use sysinfo::{ProcessExt, System, SystemExt};
 
 use winit::platform::windows::{WindowExtWindows, WindowBuilderExtWindows, IconExtWindows};
@@ -15,10 +18,11 @@ use winit::{
 };
 
 use winapi;
+use winapi::um::wincon::GetConsoleWindow;
 use image::{self, ImageFormat};
 
 fn main() {
-
+    print!("Main\n");
     //get actual path
     let mut actual_path = std::env::current_dir().unwrap().to_str().unwrap().to_owned();
     //println!("actual path: {}", actual_path);
@@ -31,6 +35,14 @@ fn main() {
         }
         i += 1;
     }
+
+    //log
+    let mut file_lg = File::create("tool.log").expect("Unable to create file");
+    file_lg.write_all(b"Main\n").expect("Unable to write data");
+    //blank all file
+    file_lg.set_len(0).expect("Unable to set file length");
+
+
 
 
 
@@ -54,11 +66,13 @@ fn main() {
 
     let mut x = 0;
     let mut y = 0;
-    let mut dx = 1;
-    let mut dy = 1;
+    let mut dx = 2;
+    let mut dy = 2;
 
     //hide console window
-    let _ = unsafe { winapi::um::wincon::FreeConsole() };
+    //let _ = unsafe { winapi::um::wincon::FreeConsole() };
+    let _ = unsafe { winapi::um::winuser::ShowWindow(GetConsoleWindow(), 0) };
+    
 
     //keep window on top
     unsafe { winapi::um::winuser::SetWindowPos(window.hwnd() as winapi::shared::windef::HWND, winapi::um::winuser::HWND_TOPMOST, 0, 0, 0, 0, winapi::um::winuser::SWP_NOMOVE | winapi::um::winuser::SWP_NOSIZE) };
@@ -112,7 +126,11 @@ fn main() {
 
 
     //set window size to image size
-    window.set_inner_size(winit::dpi::LogicalSize::new(img_width as f64, img_height as f64));
+    //window.set_inner_size(winit::dpi::LogicalSize::new(img_width, img_height));
+    print!("image : {} x {}\n", img_width, img_height);
+
+    //set window content size to image size
+    window.set_inner_size(winit::dpi::PhysicalSize::new(img_width, img_height));
     
 
 
@@ -129,7 +147,7 @@ fn main() {
 
     let mut image_bytes_ptr = image_bytes.as_mut_ptr();
     let mut image_bytes_len = image_bytes.len();
-    //let mut image_bytes_size = std::mem::size_of::<u8>() * image_bytes_len;
+    let mut image_bytes_size = std::mem::size_of::<u8>() * image_bytes_len;
     let mut image_bytes_hbitmap = unsafe { winapi::um::wingdi::CreateBitmap(img_width, img_height, 1, 32, image_bytes_ptr as *const winapi::ctypes::c_void) };
     let mut image_bytes_hdc = unsafe { winapi::um::winuser::GetDC(window.hwnd() as winapi::shared::windef::HWND) };
     let mut image_bytes_hdc_mem = unsafe { winapi::um::wingdi::CreateCompatibleDC(image_bytes_hdc) };
@@ -148,6 +166,17 @@ fn main() {
     unsafe { winapi::um::winuser::GetWindowRect(window.hwnd() as winapi::shared::windef::HWND, &mut rect) };
     let window_width = rect.right - rect.left;
     let window_height = rect.bottom - rect.top;
+    print!("window : {} x {}\n", window_width, window_height);
+    
+    //crop window to image size + title bar
+    //unsafe { winapi::um::winuser::MoveWindow(window.hwnd() as winapi::shared::windef::HWND, rect.left, rect.top, img_width, img_height+36, 1) };
+
+     //get window size
+     let mut rect = winapi::shared::windef::RECT { left: 0, top: 0, right: 0, bottom: 0 };
+     unsafe { winapi::um::winuser::GetWindowRect(window.hwnd() as winapi::shared::windef::HWND, &mut rect) };
+     let window_width = rect.right - rect.left;
+     let window_height = rect.bottom - rect.top;
+     print!("window : {} x {}\n", window_width, window_height);
 
     
     //get program PID
@@ -175,9 +204,24 @@ fn main() {
     drop(file); //close file
 
     //démarrage du programme handler avec pour argument le nom du fichier à ouvrir après 3 secondes
-    thread::sleep(time::Duration::from_secs(3));
-    let mut _handler_res = std::process::Command::new("cmd.exe").arg("/C").arg("start").arg("handler.exe").arg("tool.lock").spawn().expect("failed to execute process");
+    //thread::sleep(time::Duration::from_secs(3));
 
+    file_lg.write_all("handler starting".as_bytes()).unwrap();
+
+    
+    //start cmd
+    std::process::Command::new("cmd.exe").arg("/C").arg("start").arg("handler.exe").spawn().expect("failed to execute process");
+
+
+
+
+    file_lg.write_all("handler started".as_bytes()).unwrap();
+    file_lg.flush().unwrap();
+    file_lg.sync_all().unwrap();
+    drop(file_lg); //close file
+
+    //set window active
+    unsafe { winapi::um::winuser::SetForegroundWindow(window.hwnd() as winapi::shared::windef::HWND) };
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -273,6 +317,10 @@ fn main() {
             Event::MainEventsCleared => {
                 window.request_redraw();
             }
+
+            
+
+
             Event::RedrawRequested(_) => {
                 x += dx;
                 y += dy;
