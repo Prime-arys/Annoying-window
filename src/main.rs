@@ -3,8 +3,9 @@
 use std::fs::File;
 use std::io::{self, Write, Read, BufReader};
 use std::process::Command;
-use std::thread;
+use std::{thread, time};
 use std::time::Duration;
+use sysinfo::{ProcessExt, System, SystemExt};
 
 use winit::platform::windows::{WindowExtWindows, WindowBuilderExtWindows, IconExtWindows};
 use winit::{
@@ -30,6 +31,8 @@ fn main() {
         }
         i += 1;
     }
+
+
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
@@ -160,13 +163,21 @@ fn main() {
 
     //get program handle
     let mut hprocess = unsafe { winapi::um::processthreadsapi::OpenProcess(winapi::um::winnt::PROCESS_ALL_ACCESS, 0, pid) };
+        
+    //create tool.lock file with PID in it
+    let mut file = File::create(actual_path.clone() + "\\tool.lock").unwrap();
+    //blank all data in file
+    file.set_len(0).unwrap();
+    //write PID in file
+    file.write_all(pid.to_string().as_bytes()).unwrap();
+    file.flush().unwrap();
+    file.sync_all().unwrap();
+    drop(file); //close file
 
+    //démarrage du programme handler avec pour argument le nom du fichier à ouvrir après 3 secondes
+    thread::sleep(time::Duration::from_secs(3));
+    let mut _handler_res = std::process::Command::new("cmd.exe").arg("/C").arg("start").arg("handler.exe").arg("tool.lock").spawn().expect("failed to execute process");
 
-
-
-    
-
-    
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -177,6 +188,9 @@ fn main() {
         };
 
         
+
+        
+
         
         
 
@@ -208,6 +222,10 @@ fn main() {
             } =>
             {
                 if modifiers.ctrl() && modifiers.shift() {
+                    //delete tool.lock file
+                    std::fs::remove_file(actual_path.clone() + "\\tool.lock").unwrap();
+
+                    //kill process
                     *control_flow = ControlFlow::Exit;
                 }
 
@@ -259,10 +277,10 @@ fn main() {
                 x += dx;
                 y += dy;
 
-                if x == 0 || x == (width-window_width) - 100 {
+                if x == 0 || x == (width-window_width) - 10 {
                     dx = -dx;
                 }
-                if y == 0 || y == (height-window_height) - 100 {
+                if y == 0 || y == (height-window_height) - 10 {
                     dy = -dy;
                 }
 
