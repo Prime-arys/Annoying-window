@@ -35,3 +35,6 @@ show-image = "0.13.1"
 
 #sysinfo
 sysinfo = "0.28.4"
+
+#random number
+rand = "0.8.4"

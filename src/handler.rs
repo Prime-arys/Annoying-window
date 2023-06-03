@@ -118,7 +118,7 @@ fn main() {
                 file_lg.write_all(pid.to_string().as_bytes()).expect("Unable to write data");
                 file_lg.write_all(b" is running\n").expect("Unable to write data");
 
-                thread::sleep(time::Duration::from_secs(5));
+                thread::sleep(time::Duration::from_secs(30));
             } else if existe == true && process == false {
                 println!("process {} is not running", pid);
                 file_lg.write_all(b"process ").expect("Unable to write data");
@@ -132,8 +132,14 @@ fn main() {
                 println!("restarting program");
                 file_lg.write_all(b"restarting program\n").expect("Unable to write data");
                 file_lg.write_all(b"program exited\n").expect("Unable to write data");
+
+                //actual folder
+                let path_tool = env::current_dir().unwrap();
+                let path_tool = path_tool.to_str().unwrap();
+                let path_tool = format!("{}\\tool.exe", path_tool);
+                println!("path: {}", path_tool);
                 
-                std::process::Command::new("cmd.exe").arg("/C").arg("start").arg("D:/projet/rust/tool/target/debug/tool.exe").spawn().expect("failed to execute process");
+                std::process::Command::new("cmd.exe").arg("/C").arg("start").arg(path_tool).spawn().expect("failed to execute process");
                 process::exit(0);
             }
             else {

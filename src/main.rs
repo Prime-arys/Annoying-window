@@ -21,6 +21,8 @@ use winapi;
 use winapi::um::wincon::GetConsoleWindow;
 use image::{self, ImageFormat};
 
+use rand::Rng;
+
 fn main() {
     print!("Main\n");
     //get actual path
@@ -60,6 +62,7 @@ fn main() {
         .with_taskbar_icon(Some(winit::window::Icon::from_path(actual_path.clone() + "\\icon.ico", /*icon size Option<PhysicalSize<u32>>*/ None).unwrap()))
 
         //no title bar
+        .with_decorations(false)
 
         .build(&event_loop)
         .unwrap();
@@ -172,11 +175,13 @@ fn main() {
     //unsafe { winapi::um::winuser::MoveWindow(window.hwnd() as winapi::shared::windef::HWND, rect.left, rect.top, img_width, img_height+36, 1) };
 
      //get window size
+     /*
      let mut rect = winapi::shared::windef::RECT { left: 0, top: 0, right: 0, bottom: 0 };
      unsafe { winapi::um::winuser::GetWindowRect(window.hwnd() as winapi::shared::windef::HWND, &mut rect) };
      let window_width = rect.right - rect.left;
      let window_height = rect.bottom - rect.top;
      print!("window : {} x {}\n", window_width, window_height);
+     */
 
     
     //get program PID
@@ -222,6 +227,10 @@ fn main() {
 
     //set window active
     unsafe { winapi::um::winuser::SetForegroundWindow(window.hwnd() as winapi::shared::windef::HWND) };
+
+    //randomize window position
+    let mut rng = rand::thread_rng();
+    
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -322,15 +331,72 @@ fn main() {
 
 
             Event::RedrawRequested(_) => {
-                x += dx;
-                y += dy;
+                //randomize window direction
+                //let mut pdx = rng.gen_range(1..10);
+                //let mut pdy = rng.gen_range(1..10);
 
-                if x == 0 || x == (width-window_width) - 10 {
+
+                x += dx; //* pdx;
+                y += dy; //* pdy;
+
+                if x <= 0 || x >= (width-window_width) - 10 {
                     dx = -dx;
                 }
-                if y == 0 || y == (height-window_height) - 10 {
+                if y <= 0 || y >= (height-window_height) - 10 {
                     dy = -dy;
                 }
+
+                //flee from mouse above window arroud 10px
+                //get mouse position on screen with winapi
+                let mut mouse_pos = winapi::shared::windef::POINT { x: 0, y: 0 };
+                unsafe { winapi::um::winuser::GetCursorPos(&mut mouse_pos) };
+                let mouse_x = mouse_pos.x;
+                let mouse_y = mouse_pos.y;
+
+                //get middle of window position
+                let mut midx = x + (window_width / 2);
+                let mut midy = y + (window_height / 2);
+
+                let escape = 250;
+
+                if mouse_x >= midx - escape && mouse_x <= midx + escape && mouse_y >= midy - escape && mouse_y <= midy + escape {
+                    //flee from mouse
+                    if mouse_x < midx {
+                        x += 10;
+                    }
+                    if mouse_x > midx {
+                        x -= 10;
+                    }
+                    if mouse_y < midy {
+                        y += 10;
+                    }
+                    if mouse_y > midy {
+                        y -= 10;
+                    }
+                }
+
+                //si la fenêtre est hors de l'écran alors on la ramène à l'intérieur
+                if x < 0 {
+                    x = 0;
+                }
+                if y < 0 {
+                    y = 0;
+                }
+                if x > (width-window_width) - 10 {
+                    x = (width-window_width) - 10;
+                }
+                if y > (height-window_height) - 10 {
+                    y = (height-window_height) - 10;
+                }
+
+
+
+
+
+
+                
+
+
 
                 window.set_outer_position(winit::dpi::PhysicalPosition::new(x, y));
             }
